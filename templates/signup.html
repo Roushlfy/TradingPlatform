@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}二手物品交易平台 | 注册{% endblock %}
+{% block nav %}{% endblock %}
+{% block content %}
+    <div class="card mx-auto" style="width: 600px;margin-top: 200px;">
+        <div class="card-body">
+            <h2 class="text-center mb-3">注册二手物品交易平台</h2>
+            <form action="{{ url_for('signup') }}" method="post" class="was-validated" onsubmit="return ValidateForm()">
+                <div class="form-floating mb-3 mt-3">
+                    <input type="text" class="form-control" id="username" placeholder="请输入用户名" name="username" required>
+                    <label for="username">用户名</label>
+                    <div class="invalid-feedback">请输入用户名！</div>
+                </div>
+                <div class="form-floating mt-3 mb-3">
+                    <input type="password" class="form-control" id="password" placeholder="请输入密码" name="password" required>
+                    <label for="password">密码</label>
+                    <div class="invalid-feedback">请输入密码！</div>
+                </div>
+                <div class="form-floating mt-3 mb-3">
+                    <input type="password" class="form-control" id="password_repeat" placeholder="请再次输入密码"
+                           name="password_repeat" required>
+                    <label for="password_repeat">确认密码</label>
+                    <div class="invalid-feedback">请再次输入密码！</div>
+                </div>
+                {% if error %}
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <strong>错误!</strong> {{ error }}
+                    </div>
+                {% endif %}
+                <div id="tips"></div>
+                <div class="d-grid">
+                    <a href="{{ url_for('login') }}" class="text-primary text-decoration-none text-center mx-auto mb-3">已有账号？去登录。</a>
+                    <button type="submit" class="btn btn-primary btn-block">注 册</button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    <script type="text/javascript">
+        function ValidateForm() {
+            let password1 = document.getElementById('password').value;
+            let password2 = document.getElementById('password_repeat').value;
+            if (password1 !== password2) {
+                document.getElementById('tips').outerHTML = `
+                    <div class="alert alert-danger alert-dismissible fade show" id="tips">
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <strong>错误!</strong> 两次密码输入不同！
+                    </div>
+                `
+                return false;
+            }
+            return true;
+        }
+    </script>
+{% endblock %}

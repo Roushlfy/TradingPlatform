@@ -1,0 +1,11 @@
+# vscode
+.vscode
+
+# idea
+.idea
+
+# python
+__pycache__
+
+# system
+.DS_Store

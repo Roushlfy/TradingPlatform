@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="container mt-3">
+        {% if success %}
+            <div class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                {{ success }}
+            </div>
+        {% endif %}
+        {% if error %}
+            <div class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                {{ error }}
+            </div>
+        {% endif %}
+        <div class="d-flex align-items-center">
+            <div class="flex-grow-1 h2">我的商品</div>
+            <button class="btn btn-primary d-inline-flex align-items-center" type="button"
+                    data-bs-toggle="modal" data-bs-target="#add-goods-dialog">
+                <span class="glyphicon glyphicon-plus"></span>&nbsp;添加商品
+            </button>
+        </div>
+        {% if goods_list|length == 0 %}
+            <div class="mt-3">暂无商品</div>
+        {% else %}
+            <div class="mt-3 d-flex flex-wrap justify-content-between">
+                {% for goods in goods_list %}
+                    <div class="card m-3" style="width:250px">
+                        {% if goods.img %}
+                            <img class="card-img-top" src="{{ goods.img }}" alt="商品图片"
+                                 style="width:248px;height: 248px;">
+                        {% else %}
+                            <img class="card-img-top" src="{{ url_for('static', filename='images/cart.jpeg') }}"
+                                 alt="商品图片" style="width:248px;height: 248px;">
+                        {% endif %}
+                        <div class="card-body">
+                            <h4 class="card-title">{{ goods.name }}</h4>
+                            <p class="card-text" style="text-overflow: ellipsis;white-space: nowrap;overflow: hidden">
+                                {{ goods.description }}
+                            </p>
+                            <h5 class="text-warning d-flex align-items-center mb-3">
+                                {% if goods.exempt_postage %}
+                                    <span class="badge rounded-pill bg-info">包邮</span>
+                                    &nbsp;
+                                {% endif %}
+                                ¥{{ goods.price }}
+                            </h5>
+                            <div class="row text-center">
+                                <a href="{{ url_for('goods_detail') }}?id={{ goods.id }}"
+                                   class="col text-decoration-none text-primary">
+                                    <div class="tp-icon">
+                                        <span class="glyphicon glyphicon-list"></span>&nbsp;详情
+                                    </div>
+                                </a>
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#edit-goods-dialog"
+                                   class="col text-decoration-none text-info" data-goods-id="{{ goods.id }}"
+                                   data-goods-name="{{ goods.name }}" data-goods-description="{{ goods.description }}"
+                                   data-goods-img="{{ goods.img }}" data-goods-price="{{ goods.price }}"
+                                   data-goods-exempt_postage="{{ goods.exempt_postage }}">
+                                    <div class="tp-icon">
+                                        <span class="glyphicon glyphicon-edit"></span>&nbsp;编辑
+                                    </div>
+                                </a>
+                                <a href="{{ url_for('delete_goods') }}?id={{ goods.id }}"
+                                   class="col text-decoration-none text-danger">
+                                    <div class="tp-icon">
+                                        <span class="glyphicon glyphicon-trash"></span>&nbsp;删除
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                {% for _ in range(10) %}
+                    <div style="width: 250px; height: 0" class="mx-3"></div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block dialog %}
+    <div class="modal fade" id="add-goods-dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">添加商品</h4>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post" action="{{ url_for('add_goods') }}" enctype='multipart/form-data'>
+                    <div class="modal-body row">
+                        <div class="col-4 text-center">
+                            <img id="add-goods-img-preview" src="{{ url_for('static', filename='images/cart.jpeg') }}"
+                                 alt="商品图片" style="width: 190px;height: 190px;">
+                            <input type="file" class="form-control mt-3" id="add-goods-img" name="img" accept="image/*"
+                                   onchange="PreviewImage('add-goods-img', 'add-goods-img-preview')">
+                        </div>
+                        <div class=" col-8">
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="add-goods-name" placeholder="请输入商品名称"
+                                       name="name" required>
+                                <label for="add-goods-name">商品名称</label>
+                            </div>
+                            <div class="form-floating mb-3 mt-3">
+                                <input type="text" class="form-control" id="add-goods-description" placeholder="请输入商品描述"
+                                       name="description" required>
+                                <label for="add-goods-description">商品描述</label>
+                            </div>
+                            <div class="form-floating mb-3 mt-3">
+                                <input type="number" class="form-control" id="add-goods-price" placeholder="请输入商品价格"
+                                       name="price" required min="1">
+                                <label for="add-goods-price">商品价格</label>
+                            </div>
+                            <div class="form-check form-switch px-0 d-flex align-items-center mt-3">
+                                <label class="form-check-label" for="add-goods-exempt_postage">包邮：</label>
+                                <input class="form-check-input float-none mx-0 mt-0" type="checkbox"
+                                       id="add-goods-exempt_postage" name="exempt_postage">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary flex-grow-1">添 加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="edit-goods-dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">编辑商品</h4>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post" action="{{ url_for('update_goods') }}" enctype='multipart/form-data'>
+                    <div class="modal-body row">
+                        <div class="col-4 text-center">
+                            <img id="edit-goods-img-preview" src="{{ url_for('static', filename='images/cart.jpeg') }}"
+                                 alt="商品图片" style="width: 190px;height: 190px;">
+                            <input type="file" class="form-control mt-3" id="edit-goods-img" name="img" accept="image/*"
+                                   onchange="PreviewImage('edit-goods-img', 'edit-goods-img-preview')">
+                        </div>
+                        <div class=" col-8">
+                            <div class="form-floating d-none">
+                                <input type="text" class="form-control" id="edit-goods-id" placeholder="请输入商品ID"
+                                       name="id" required readonly>
+                                <label for="edit-goods-id">商品ID</label>
+                            </div>
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="edit-goods-name" placeholder="请输入商品名称"
+                                       name="name" required>
+                                <label for="edit-goods-name">商品名称</label>
+                            </div>
+                            <div class="form-floating mb-3 mt-3">
+                                <input type="text" class="form-control" id="edit-goods-description"
+                                       placeholder="请输入商品描述"
+                                       name="description" required>
+                                <label for="edit-goods-description">商品描述</label>
+                            </div>
+                            <div class="form-floating mb-3 mt-3">
+                                <input type="number" class="form-control" id="edit-goods-price" placeholder="请输入商品价格"
+                                       name="price" required min="1">
+                                <label for="edit-goods-price">商品价格</label>
+                            </div>
+                            <div class="form-check form-switch px-0 d-flex align-items-center mt-3">
+                                <label class="form-check-label" for="edit-goods-exempt_postage">包邮：</label>
+                                <input class="form-check-input float-none mx-0 mt-0" type="checkbox"
+                                       id="edit-goods-exempt_postage" name="exempt_postage">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary flex-grow-1">保 存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script type="text/javascript">
+        function PreviewImage(input_id, img_id) {
+            let input = document.getElementById(input_id);
+            let img = document.getElementById(img_id);
+            if (input.files && input.files[0])
+                img.src = window.URL.createObjectURL(input.files[0]);
+        }
+
+        let EditGoodsDialog = document.getElementById('edit-goods-dialog')
+        EditGoodsDialog.addEventListener('show.bs.modal', function (event) {
+            let button = event.relatedTarget;
+            let id = button.getAttribute('data-goods-id');
+            let name = button.getAttribute('data-goods-name');
+            let description = button.getAttribute('data-goods-description');
+            let img = button.getAttribute('data-goods-img');
+            let price = button.getAttribute('data-goods-price');
+            let exempt_postage = button.getAttribute('data-goods-exempt_postage');
+
+            document.getElementById('edit-goods-id').value = id;
+            document.getElementById('edit-goods-name').value = name;
+            document.getElementById('edit-goods-description').value = description;
+            if (img.length > 0)
+                document.getElementById('edit-goods-img-preview').src = img;
+            document.getElementById('edit-goods-img').value = '';
+            document.getElementById('edit-goods-price').value = price;
+            $('#edit-goods-exempt_postage').prop('checked', exempt_postage === 'True');
+        })
+    </script>
+{% endblock %}

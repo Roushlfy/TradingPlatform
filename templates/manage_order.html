@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="container mt-3">
+        {% if success %}
+            <div class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                {{ success }}
+            </div>
+        {% endif %}
+        {% if error %}
+            <div class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                {{ error }}
+            </div>
+        {% endif %}
+        <h2 class="mt-3">我发起的订单</h2>
+        {% if orders_from_user|length == 0 %}
+            <div>暂无订单</div>
+        {% else %}
+            <table class="table table-bordered text-center">
+                <thead class="table-light">
+                <tr>
+                    <th>商品名称</th>
+                    <th>商品价格</th>
+                    <th>订单状态</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody class="border-top-0">
+                {% for order in orders_from_user %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('goods_detail') }}?id={{ order.goods_id }}"
+                               class="text-info text-decoration-none">
+                                {{ order.name }}
+                            </a>
+                        </td>
+                        <td class="text-warning">
+                            <div class="d-flex align-items-center justify-content-center">
+                                {% if order.exempt_postage %}
+                                    <span class="badge rounded-pill bg-info">包邮</span>
+                                    &nbsp;
+                                {% endif %}
+                                ¥{{ order.price }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="badge {{ state_color_map.get(order.state) }}">
+                                {{ state_map.get(order.state) }}
+                            </div>
+                        </td>
+                        <td style="max-width: 200px">
+                            {% if order.state == ORDER_STATE_APPROVED %}
+                                <form action="{{ url_for('establish_order', goods_id=order.goods_id, order_id=order.id) }}"
+                                      method="get">
+                                    <div class="input-group">
+                                        <label for="address" class="input-group-text">地址</label>
+                                        <select class="form-select col" id="address" name="address">
+                                            {% for address in address_list %}
+                                                <option value="{{ address.id }}">{{ address.name|truncate(10, True) }}|{{ address.phone|truncate(11, True) }}|{{ address.location|truncate(20, True) }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button class="input-group-text" type="submit">付款</button>
+                                        <a class="input-group-text text-danger text-decoration-none"
+                                           href="{{ url_for('abandon_order') }}?id={{ order.goods_id }}&from={{ url_for('manage_order') }}">放弃订单</a>
+                                    </div>
+                                </form>
+                            {% elif order.state == ORDER_STATE_APPLIED %}
+                                <a href="{{ url_for('abandon_order') }}?id={{ order.goods_id }}&from={{ url_for('manage_order') }}"
+                                   class="text-danger text-decoration-none">
+                                    放弃申请
+                                </a>
+                            {% elif order.state == ORDER_STATE_ON_ROAD %}
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#express-dialog"
+                                   data-express-code="{{ order.express_code }}"
+                                   data-express-company="{{ order.express_company }}"
+                                   class="text-info text-decoration-none">
+                                    快递信息
+                                </a>
+                                &nbsp;
+                                <a href="{{ url_for('finish_order', goods_id=order.goods_id, order_id=order.id) }}"
+                                   class="text-success text-decoration-none">
+                                    确认收货
+                                </a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+        <h2 class="mt-3">我收到的订单</h2>
+        {% if orders_to_user|length == 0 %}
+            <div>暂无订单</div>
+        {% else %}
+            <table class="table table-bordered text-center">
+                <thead class="table-light">
+                <tr>
+                    <th>商品名称</th>
+                    <th>商品价格</th>
+                    <th>发起人</th>
+                    <th>订单状态</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody class="border-top-0">
+                {% for order in orders_to_user %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('goods_detail') }}?id={{ order.goods_id }}"
+                               class="text-info text-decoration-none">
+                                {{ order.name }}
+                            </a>
+                        </td>
+                        <td class="text-warning">
+                            <div class="d-flex align-items-center justify-content-center">
+                                {% if order.exempt_postage %}
+                                    <span class="badge rounded-pill bg-info">包邮</span>
+                                    &nbsp;
+                                {% endif %}
+                                ¥{{ order.price }}
+                            </div>
+                        </td>
+                        <td>{{ order.username }}</td>
+                        <td>
+                            <div class="badge {{ state_color_map.get(order.state) }}">
+                                {{ state_map.get(order.state) }}
+                            </div>
+                        </td>
+                        <td>
+                            {% if order.state == ORDER_STATE_APPLIED %}
+                                <a href="{{ url_for('approve_order') }}?goods_id={{ order.goods_id }}&order_id={{ order.id }}"
+                                   class="text-info text-decoration-none">
+                                    同意
+                                </a>
+                            {% elif order.state == ORDER_STATE_ESTABLISHED %}
+                                <a href="#" class="text-primary text-decoration-none" data-bs-toggle="modal"
+                                   data-bs-target="#deliver-dialog" data-address-name="{{ order.address_name }}"
+                                   data-address-phone="{{ order.address_phone }}"
+                                   data-address-location="{{ order.address_location }}" data-order-id="{{ order.id }}"
+                                   data-goods-id="{{ order.goods_id }}">
+                                    发货
+                                </a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block dialog %}
+    <div class="modal fade" id="deliver-dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">发货</h4>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post" id="deliver-form" action="{{ url_for('deliver_goods') }}">
+                    <div class="modal-body">
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="address-name" placeholder="" readonly>
+                            <label for="address-name">收件人</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="address-phone" placeholder="" readonly>
+                            <label for="address-phone">手机</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="address-location" placeholder="" readonly>
+                            <label for="address-location">地址</label>
+                        </div>
+                        <div class="form-floating d-none">
+                            <input type="text" class="form-control" id="goods-id" placeholder=""
+                                   name="goods_id" required readonly>
+                            <label for="goods-id"></label>
+                        </div>
+                        <div class="form-floating d-none">
+                            <input type="text" class="form-control" id="order-id" placeholder=""
+                                   name="order_id" required readonly>
+                            <label for="order-id"></label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="company" placeholder="请输入快递公司"
+                                   name="company" required>
+                            <label for="company">快递公司</label>
+                        </div>
+                        <div class="form-floating mb-3 mt-3">
+                            <input type="text" class="form-control" id="code" placeholder="请输入快递单号"
+                                   name="code" required>
+                            <label for="code">快递单号</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary flex-grow-1">发 货</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="express-dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">快递信息</h4>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="express-company" placeholder="" readonly>
+                        <label for="express-company">快递公司</label>
+                    </div>
+                    <div class="form-floating mb-3 mt-3">
+                        <input type="text" class="form-control" id="express-code" placeholder="" readonly>
+                        <label for="express-code">快递单号</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary flex-grow-1" data-bs-dismiss="modal">关 闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block head %}
+    <style>
+        td {
+            vertical-align: middle !important;
+        }
+    </style>
+{% endblock %}
+
+{% block scripts %}
+    <script type="text/javascript">
+        let DeliverDialog = document.getElementById('deliver-dialog')
+        DeliverDialog.addEventListener('show.bs.modal', function (event) {
+            let button = event.relatedTarget;
+            let name = button.getAttribute('data-address-name');
+            let phone = button.getAttribute('data-address-phone');
+            let location = button.getAttribute('data-address-location');
+            let goods_id = button.getAttribute('data-goods-id');
+            let order_id = button.getAttribute('data-order-id');
+
+            document.getElementById('address-name').value = name;
+            document.getElementById('address-phone').value = phone;
+            document.getElementById('address-location').value = location;
+            document.getElementById('goods-id').value = goods_id;
+            document.getElementById('order-id').value = order_id;
+        })
+
+        let ExpressDialog = document.getElementById('express-dialog')
+        ExpressDialog.addEventListener('show.bs.modal', function (event) {
+            let button = event.relatedTarget;
+            let code = button.getAttribute('data-express-code');
+            let company = button.getAttribute('data-express-company');
+
+            document.getElementById('express-code').value = code;
+            document.getElementById('express-company').value = company;
+        })
+    </script>
+{% endblock %}

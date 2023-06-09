@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="container mt-3">
+        <h2>交易大厅</h2>
+        <form action="{{ url_for("index") }}" class="mt-3" id="condition-form">
+            <label for="key" class="d-none"></label>
+            <div class="input-group">
+                <input type="text" class="form-control" id='key' placeholder="请输入关键词" name="key" value="{{ key }}">
+                <button class="input-group-text">搜索</button>
+            </div>
+            <div class="d-flex mt-3">
+                <div>包邮：</div>
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" id="ep_all" name="exempt_postage" value="all"
+                           {% if exempt_postage != 'yes' and exempt_postage != 'no' %}checked{% endif %}
+                           onchange="submit()">
+                    不限
+                    <label class="form-check-label" for="ep_all"></label>
+                </div>
+                <div class="form-check mx-3">
+                    <input type="radio" class="form-check-input" id="ep_yes" name="exempt_postage" value="yes"
+                           {% if exempt_postage == 'yes' %}checked{% endif %}
+                           onchange="submit()">
+                    包邮
+                    <label class="form-check-label" for="ep_yes"></label>
+                </div>
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" id="ep_no" name="exempt_postage" value="no"
+                           {% if exempt_postage == 'no' %}checked{% endif %}
+                           onchange="submit()">
+                    不包邮
+                    <label class="form-check-label" for="ep_no"></label>
+                </div>
+            </div>
+            <div class="d-flex mt-3">
+                <div>状态：</div>
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" id="state_all" name="state" value="all"
+                           {% if state != 'yes' and state != 'no' %}checked{% endif %}
+                           onchange="submit()">
+                    不限
+                    <label class="form-check-label" for="state_all"></label>
+                </div>
+                <div class="form-check mx-3">
+                    <input type="radio" class="form-check-input" id="state_yes" name="state" value="yes"
+                           {% if state == 'yes' %}checked{% endif %}
+                           onchange="submit()">
+                    可购买
+                    <label class="form-check-label" for="state_yes"></label>
+                </div>
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" id="state_no" name="state" value="no"
+                           {% if state == 'no' %}checked{% endif %}
+                           onchange="submit()">
+                    已出售
+                    <label class="form-check-label" for="state_no"></label>
+                </div>
+            </div>
+            <div class="d-flex mt-3">
+                <div>排序：</div>
+                <div class="form-check mx-3">
+                    <input type="radio" class="form-check-input" id="price_asc" name="price" value="asc"
+                           {% if price != 'desc' %}checked{% endif %}
+                           onchange="submit()">
+                    价格升序
+                    <label class="form-check-label" for="price_asc"></label>
+                </div>
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" id="price_desc" name="price" value="desc"
+                           {% if price == 'desc' %}checked{% endif %}
+                           onchange="submit()">
+                    价格降序
+                    <label class="form-check-label" for="price_desc"></label>
+                </div>
+            </div>
+        </form>
+        {% if goods_list|length == 0 %}
+            <div class="mt-3">暂无满足条件的商品。</div>
+        {% else %}
+            <div class="mt-3 d-flex flex-wrap justify-content-between">
+                {% for goods in goods_list %}
+                    <div class="card m-3" style="width:250px">
+                        {% if goods.img %}
+                            <img class="card-img-top" src="{{ goods.img }}" alt="商品图片"
+                                 style="width:248px;height: 248px;">
+                        {% else %}
+                            <img class="card-img-top" src="{{ url_for('static', filename='images/cart.jpeg') }}"
+                                 alt="商品图片" style="width:248px;height: 248px;">
+                        {% endif %}
+                        <div class="card-body">
+                            <h4 class="card-title">{{ goods.name }}</h4>
+                            <p class="card-text" style="text-overflow: ellipsis;white-space: nowrap;overflow: hidden">
+                                {{ goods.description }}
+                            </p>
+                            <h5 class="text-warning d-flex align-items-center mb-3">
+                                {% if goods.exempt_postage %}
+                                    <span class="badge rounded-pill bg-info">包邮</span>
+                                    &nbsp;
+                                {% endif %}
+                                ¥{{ goods.price }}
+                            </h5>
+                            <div class="d-grid">
+                                <a href="{{ url_for('goods_detail') }}?id={{ goods.id }}"
+                                   class="btn btn-primary btn-block">查看商品详情</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                {% for _ in range(10) %}
+                    <div style="width: 250px; height: 0" class="mx-3"></div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script type="text/javascript">
+        function submit() {
+            document.getElementById('condition-form').submit();
+        }
+    </script>
+{% endblock %}

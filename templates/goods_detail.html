@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="container mt-3">
+        {% if success %}
+            <div class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                {{ success }}
+            </div>
+        {% endif %}
+        {% if error %}
+            <div class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                {{ error }}
+            </div>
+        {% endif %}
+        {% if goods %}
+            <div class="mt-3">
+                <div class="border d-inline-block" style="width:300px;height: 300px;vertical-align: top">
+                    {% if goods.img %}
+                        <img class="card-img-top" src="{{ goods.img }}" alt="商品图片" style="width:100%;height: 100%">
+                    {% else %}
+                        <img class="card-img-top" src="{{ url_for('static', filename='images/cart.jpeg') }}"
+                             alt="商品图片" style="width:100%;height: 100%">
+                    {% endif %}
+                </div>
+                <div class="ps-4 d-inline-block" style="width: calc(100% - 330px);vertical-align: top">
+                    <h1>{{ goods.name }}</h1>
+                    <h3 class="text-warning d-flex align-items-center my-3">
+                        {% if goods.exempt_postage %}
+                            <span class="badge rounded-pill bg-info">包邮</span>
+                            &nbsp;
+                        {% endif %}
+                        ¥{{ goods.price }}
+                    </h3>
+                    <h4 class="mt-3"><strong>商品描述：</strong>{{ goods.description }}</h4>
+                    {% if owner %}
+                        <p class="text-muted mt-3">
+                            由<strong>{{ owner.username }}</strong>（已卖出<strong>{{ owner.sale_count }}</strong>件商品）发布，<strong>{{ goods.apply_count }}</strong>人想要。
+                        </p>
+                    {% endif %}
+                    {% if goods.off_sale %}
+                        <div class="btn btn-secondary d-flex align-items-center text-white mt-3 w-25 justify-content-center">
+                            <span class="glyphicon glyphicon-ban-circle"></span>&nbsp;<strong>已售出</strong>
+                        </div>
+                    {% else %}
+                        {% if order %}
+                            <a class="btn btn-warning d-flex align-items-center text-white mt-3 w-25 justify-content-center"
+                               href="{{ url_for("abandon_order") }}?id={{ goods.id }}">
+                                <span class="glyphicon glyphicon-heart"></span>&nbsp;<strong>已想要，点击取消</strong>
+                            </a>
+                        {% else %}
+                            <a class="btn btn-warning d-flex align-items-center text-white mt-3 w-25 justify-content-center
+                            {% if goods.owner == session.get('user_id') %}disabled{% endif %}"
+                               href="{{ url_for("apply_order") }}?id={{ goods.id }}">
+                                <span class="glyphicon glyphicon-heart-empty"></span>&nbsp;<strong>想要</strong>
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mt-3">
+                <h2>商品评论（{{ comments|length }}）</h2>
+                <form action="{{ url_for('add_comment') }}" method="post">
+                    <div class="form-floating d-none">
+                        <input type="text" class="form-control" id="goods-id" placeholder="请输入商品ID"
+                               value="{{ goods.id }}" name="id" required readonly>
+                        <label for="goods-id">商品ID</label>
+                    </div>
+                    <div class="mb-3 mt-3">
+                        <label for="comment" class="d-none">请输入评论：</label>
+                        <textarea class="form-control" rows="3" id="comment" name="content" placeholder="请文明发言"></textarea>
+                    </div>
+                    <div style="text-align: right">
+                        <button type="submit" class="btn btn-primary">添加评论</button>
+                    </div>
+                </form>
+                <div class="mt-3 d-flex align-items-center" style="cursor: pointer"
+                     onclick="window.location = `{{ url_for('goods_detail') }}?id={{ goods.id }}&comment_order={% if comment_order == 'desc' %}asc{% else %}desc{% endif %}`">
+                    {% if comment_order == 'desc' %}
+                        <div class="text-primary">时间降序&nbsp;</div>
+                        <div class="glyphicon glyphicon-sort-by-attributes-alt text-primary"></div>
+                    {% else %}
+                        <div class="text-primary">时间升序&nbsp;</div>
+                        <div class="glyphicon glyphicon-sort-by-attributes text-primary"></div>
+                    {% endif %}
+                </div>
+                <ul class="list-group mt-3 mb-5">
+                    {% if comments|length == 0 %}
+                        <li class="list-group-item">暂无评论</li>
+                    {% else %}
+                        {% for comment in comments %}
+                            <li class="list-group-item">
+                                <div><strong>{{ comment.username }}</strong></div>
+                                <div class="my-1">{{ comment.content }}</div>
+                                <div>
+                                    <div class="text-muted small d-inline-block" style="vertical-align: middle">
+                                        发表于：{{ (comment.create_at) }}
+                                    </div>
+                                    {% if comment.user_id == session.get('user_id') %}
+                                        <a href="{{ url_for('delete_comment') }}?goods_id={{ goods.id }}&comment_id={{ comment.id }}"
+                                           class="text-decoration-none text-danger">
+                                            <span class="glyphicon glyphicon-trash"
+                                                  style="vertical-align: middle"></span>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    {% endif %}
+                </ul>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
