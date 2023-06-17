@@ -14,7 +14,7 @@
 └── templates  # Templates
 ```
 
-## [Documentation](./docs/build/html/index.html)
+## Documentation
 
 ### Quick start
 
@@ -93,6 +93,8 @@ Refer to the docstring in each function for more details.
 - Additional functions
   - `get_md5`
   - `get_db_conn`
+
+There is an [html API reference file](./docs/build/html/index.html).
 
 ### Static files
 
