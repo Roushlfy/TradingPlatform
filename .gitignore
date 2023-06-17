@@ -9,3 +9,7 @@ __pycache__
 
 # system
 .DS_Store
+
+# static files
+static/images/*
+!static/images/cart.jpeg # exclude cart.jpeg

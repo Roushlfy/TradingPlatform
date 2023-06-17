@@ -1,3 +1,12 @@
+# ===================================================================================================
+# Dependencies
+# ===================================================================================================
+import psycopg2
+from hashlib import md5
+
+# ===================================================================================================
+# Constants
+# ===================================================================================================
 ORDER_STATE_APPLIED = 1
 ORDER_STATE_APPROVED = 2
 ORDER_STATE_ESTABLISHED = 3
@@ -33,6 +42,31 @@ ORDER_STATE_COLOR_MAP = {
 }
 
 
+# ===================================================================================================
+# Additional functions
+# ===================================================================================================
+def get_md5(password):
+    """
+    功能：获取字符串的md5值
+    :param password:
+    :return: md5值
+    """
+    return md5(password.encode('utf-8')).hexdigest()
+
+
+def get_db_conn():
+    """
+    功能：获取数据库连接
+    注意：替换为自己的数据库信息
+    :return: psycopg2.connect
+    """
+    return psycopg2.connect(database='TradingPlatform',
+                            user='postgres',
+                            password='20021202xiaozx',
+                            host='127.0.0.1',
+                            port=5432)
+
+
 # =========================================== 大作业分数组成 ===========================================
 # 数据库设计 (15分)：ERD (15分)
 # 功能实现 (70分)：建表(5分), 用户接口 (9分)，商品接口 (17分)，订单接口 (25分)，评论接口 (7分)，收货地址接口 (7分)。
@@ -46,26 +80,44 @@ ORDER_STATE_COLOR_MAP = {
 def check_username_used(username):
     """
     功能：检测用户名是否已经被注册。
-    分值：2分
+
     :param username: 要检测的用户名
     :return: 如果用户名已被注册，返回True；否则返回False。
     """
-    # TODO：请实现该函数的功能。
-    print(username)
-    return False
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'select * from "User" where username = %s'
+    cursor.execute(query, (username,))
+    user = cursor.fetchone()
+    conn.close()
+    if user is not None:
+        return True
+    else:
+        return False
 
 
 def create_user(username, password):
     """
     功能：在数据库中创建用户，用于实现注册功能。
-    分值：2分
+
     :param username: 用户名称
     :param password: 用户明文密码，建议存储时使用md5加密
     :return: 如果创建成功，返回True；否则返回False。
     """
-    # TODO：请实现该函数的功能。
-    print(username, password)
-    return True
+    password = get_md5(password)
+    success = True
+    try:
+        conn = get_db_conn()
+        cursor = conn.cursor()
+        query = 'insert into "User" (username, password) values (%s, %s)'
+        cursor.execute(query, (username, password))
+        conn.commit()
+    except psycopg2.Error as err:
+        success = False
+        print(err)
+    else:
+        conn.close()
+    return success
 
 
 def login(username, password):
@@ -76,9 +128,15 @@ def login(username, password):
     :param password: 用户明文密码
     :return: 如果登录成功，返回用户id；否则返回None
     """
-    # TODO：请实现该函数的功能。
-    print(username, password)
-    return 0
+    password = get_md5(password)
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'select id from "User" where username = %s and password = %s'
+    cursor.execute(query, (username, password))
+    user = cursor.fetchone()
+    user_id = user[0] if user is not None else None
+    conn.close()
+    return user_id
 
 
 def get_user_info(user_id):
@@ -90,16 +148,26 @@ def get_user_info(user_id):
         username: 字符串，该用户的名称
         sale_count: 数字，该用户卖出的商品数量（即完成的订单数）
     """
-    # TODO：请实现该函数的功能。
-    print(user_id)
-    return {
-        'username': '未知用户',
-        'sale_count': 2333
-    }
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'select username from "User" where id = %s'
+    cursor.execute(query, (user_id,))
+    user = cursor.fetchone()
+    username = user[0] if user is not None else None
+    query = 'select count(*) from "Order" where user_id = %s and state = %s'
+    cursor.execute(query, (user_id, ORDER_STATE_FINISHED))
+    sale_count = cursor.fetchone()[0]
+    conn.close()
+    if username is None:
+        return None
+    else:
+        return {
+            'username': username,
+            'sale_count': sale_count
+        }
 
 
 # ======================= 商品接口 (2 + 2 + 5 + 3 + 2 + 3 = 17分) ======================= #
-
 def create_goods(owner, name, description, img, price, exempt_postage):
     """
     功能：发布二手商品。
@@ -112,9 +180,17 @@ def create_goods(owner, name, description, img, price, exempt_postage):
     :param exempt_postage: 商品是否包邮，布尔值，True表示包邮，False表示不包邮
     :return: 如果创建成功，返回True；否则返回False。
     """
-    # TODO：请实现该函数的功能。
-    print(owner, name, description, img, price, exempt_postage)
-    return False
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'insert into "Goods" (owner, name, description, img, price, exempt_postage) values (%s, %s, %s, %s, %s, %s)'
+    cursor.execute(query, (owner, name, description, img, price, exempt_postage))
+    if cursor.rowcount == 0:
+        conn.close()
+        return False
+    else:
+        conn.commit()
+        conn.close()
+        return True
 
 
 def update_goods(owner, goods_id, name, description, img, price, exempt_postage):
@@ -130,9 +206,24 @@ def update_goods(owner, goods_id, name, description, img, price, exempt_postage)
     :param exempt_postage: 商品是否包邮，布尔值，True表示包邮，False表示不包邮
     :return: 如果更新成功，返回True；否则返回False。
     """
-    # TODO：请实现该函数的功能。
-    print(owner, goods_id, name, description, img, price, exempt_postage)
-    return False
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    if img is None:
+        query = 'update "Goods" set name = %s, description = %s, price = %s, exempt_postage = %s where id = %s and ' \
+                'owner = %s'
+        cursor.execute(query, (name, description, price, exempt_postage, goods_id, owner))
+
+    else:
+        query = 'update "Goods" set name = %s, description = %s, img = %s, price = %s, exempt_postage = %s where id = ' \
+                '%s and owner = %s'
+        cursor.execute(query, (name, description, img, price, exempt_postage, goods_id, owner))
+    if cursor.rowcount == 0:
+        conn.close()
+        return False
+    else:
+        conn.commit()
+        conn.close()
+        return True
 
 
 def get_goods_list(key=None, exempt_postage=None, state=None, price=None):
@@ -152,25 +243,54 @@ def get_goods_list(key=None, exempt_postage=None, state=None, price=None):
         exempt_postage: 是否包邮
         owner: 商品发布者id
     """
-    # TODO：请实现该函数的功能。
-    print(key, exempt_postage, state, price)
-    return [{
-        'id': 0,
-        'name': '未知商品1',
-        'description': '未知描述1',
-        'img': None,
-        'price': 50,
-        'exempt_postage': True,
-        'owner': 0
-    }, {
-        'id': 1,
-        'name': '未知商品2',
-        'description': '未知描述2',
-        'img': None,
-        'price': 10,
-        'exempt_postage': False,
-        'owner': 0
-    }]
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    if state == 'yes':
+        order_state = ORDER_STATE_APPLIED
+        query = 'select id, name, description, img, price, exempt_postage, owner from "Goods" where (id not in (' \
+                'select goods_id from "Order") or id in (select goods_id from "Order" where state = %s))'
+        if key is None or key == '':
+            cursor.execute(query, (order_state,))
+        else:
+            q = ' and name like %s or description like %s'
+            cursor.execute(query + q, (order_state, key, key))
+    elif state == 'no':
+        order_state = ORDER_STATE_APPLIED
+        query = 'select id, name, description, img, price, exempt_postage, owner from "Goods" where (id in (select ' \
+                'goods_id from "Order") and id not in (select goods_id from "Order" where state = %s))'
+        if key is None or key == '':
+            cursor.execute(query, (order_state,))
+        else:
+            q = ' and name like %s or description like %s'
+            cursor.execute(query + q, (order_state, key, key))
+    else:
+        query = 'select id, name, description, img, price, exempt_postage, owner from "Goods"'
+        if key is None or key == '':
+            cursor.execute(query)
+        else:
+            q = ' where name like %s or description like %s'
+            cursor.execute(query + q, (key, key))
+    goods_list = []
+    for row in cursor.fetchall():
+        goods_list.append({
+            'id': row[0],
+            'name': row[1],
+            'description': row[2],
+            'img': row[3],
+            'price': row[4],
+            'exempt_postage': row[5],
+            'owner': row[6]
+        })
+    conn.close()
+    if price == 'asc':
+        goods_list.sort(key=lambda x: x['price'])
+    elif price == 'desc':
+        goods_list.sort(key=lambda x: x['price'], reverse=True)
+    if exempt_postage == 'yes':
+        goods_list = list(filter(lambda x: x['exempt_postage'] is True, goods_list))
+    elif exempt_postage == 'no':
+        goods_list = list(filter(lambda x: x['exempt_postage'] is False, goods_list))
+    return goods_list
 
 
 def get_goods_list_of_user(user_id):
@@ -186,23 +306,22 @@ def get_goods_list_of_user(user_id):
         price: 商品价格
         exempt_postage: 是否包邮
     """
-    # TODO：请实现该函数的功能。
-    print(user_id)
-    return [{
-        'id': 0,
-        'name': '未知商品1',
-        'description': '未知描述1',
-        'img': None,
-        'price': 50,
-        'exempt_postage': True,
-    }, {
-        'id': 1,
-        'name': '未知商品2',
-        'description': '未知描述2',
-        'img': None,
-        'price': 10,
-        'exempt_postage': False,
-    }]
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'select id, name, description, img, price, exempt_postage from "Goods" where owner = %s'
+    cursor.execute(query, (user_id,))
+    goods_list = []
+    for row in cursor.fetchall():
+        goods_list.append({
+            'id': row[0],
+            'name': row[1],
+            'description': row[2],
+            'img': row[3],
+            'price': row[4],
+            'exempt_postage': row[5]
+        })
+    conn.close()
+    return goods_list
 
 
 def delete_goods(owner, goods_id):
@@ -213,9 +332,17 @@ def delete_goods(owner, goods_id):
     :param goods_id: 商品id
     :return: 如果删除成功，返回True；否则返回False
     """
-    # TODO：请实现该函数的功能。
-    print(owner, goods_id)
-    return False
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'delete from "Goods" where id = %s and owner = %s'
+    cursor.execute(query, (goods_id, owner))
+    if cursor.rowcount == 0:
+        conn.close()
+        return False
+    else:
+        conn.commit()
+        conn.close()
+        return True
 
 
 def get_goods_detail(goods_id):
@@ -234,24 +361,36 @@ def get_goods_detail(goods_id):
         apply_count: 该商品”想要“的人数
         off_sale: 商品是否已售出，True表示已售出，False表示可购买
     """
-    # TODO：请实现该函数的功能。
-    print(goods_id)
-    goods_id = int(goods_id)
-    return {
-        'name': f'未知商品{goods_id + 1}',
-        'description': f'未知描述{goods_id + 1}',
-        'img': None,
-        'price': 50 + 50 * goods_id,
-        'exempt_postage': goods_id == 0,
-        'owner': 0,
-        'id': goods_id,
-        'apply_count': 666,
-        'off_sale': goods_id == 0
-    }
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'select name, description, img, price, exempt_postage, owner from "Goods" where id = %s'
+    cursor.execute(query, (goods_id,))
+    row = cursor.fetchone()
+    if row is None:
+        conn.close()
+        return None
+    else:
+        query = 'select count(*) from "Order" where goods_id = %s and state = %s'
+        cursor.execute(query, (goods_id, ORDER_STATE_OFF_SALE))
+        off_sale = cursor.fetchone()
+        query = 'select count(*) from "Order" where goods_id = %s and state = %s'
+        cursor.execute(query, (goods_id, ORDER_STATE_APPLIED))
+        apply = cursor.fetchone()
+        conn.close()
+        return {
+            'name': row[0],
+            'description': row[1],
+            'img': row[2],
+            'price': row[3],
+            'exempt_postage': row[4],
+            'owner': row[5],
+            'id': goods_id,
+            'apply_count': apply[0],
+            'off_sale': off_sale[0] > 0
+        }
 
 
 # ======================= 订单接口 (2 + 3 + 3 + 2 + 2 + 2 + 2 + 4 + 5 = 25分) ======================= #
-
 def apply_order(customer, goods_id):
     """
     功能：用户点击“想要”，申请购买商品（即创建ORDER_STATE_APPLIED状态的订单）。
@@ -260,9 +399,17 @@ def apply_order(customer, goods_id):
     :param goods_id: 商品id
     :return: 如果申请成功，返回True；否则返回False
     """
-    # TODO：请实现该函数的功能。
-    print(customer, goods_id)
-    return True
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'insert into "Order" (user_id, goods_id, state) values (%s, %s, %s)'
+    cursor.execute(query, (customer, goods_id, ORDER_STATE_APPLIED))
+    if cursor.rowcount == 0:
+        conn.close()
+        return False
+    else:
+        conn.commit()
+        conn.close()
+        return True
 
 
 def abandon_order(customer, goods_id):
@@ -273,9 +420,19 @@ def abandon_order(customer, goods_id):
     :param goods_id: 商品id
     :return: 如果放弃成功，返回True；否则返回False
     """
-    # TODO：请实现该函数的功能。
-    print(customer, goods_id)
-    return True
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query_delete = 'delete from "Order" where user_id = %s and goods_id = %s'
+    query_update = 'update "Order" set state = %s where goods_id = %s and state = %s'
+    cursor.execute(query_delete, (customer, goods_id))
+    if cursor.rowcount == 0:
+        conn.close()
+        return False
+    else:
+        cursor.execute(query_update, (ORDER_STATE_APPLIED, goods_id, ORDER_STATE_OFF_SALE))
+        conn.commit()
+        conn.close()
+        return True
 
 
 def approve_order(owner, goods_id, order_id):
@@ -287,9 +444,20 @@ def approve_order(owner, goods_id, order_id):
     :param order_id: 订单id
     :return: 如果操作成功，返回True；否则返回False
     """
-    # TODO：请实现该函数的功能。
-    print(owner, goods_id, order_id)
-    return True
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'update "Order" set state = %s where id = %s and goods_id = %s and goods_id in (select id from "Goods" ' \
+            'where owner = %s)'
+    cursor.execute(query, (ORDER_STATE_APPROVED, order_id, goods_id, owner))
+    if cursor.rowcount == 0:
+        conn.close()
+        return False
+    else:
+        query_update = 'update "Order" set state = %s where goods_id = %s and id != %s'
+        cursor.execute(query_update, (ORDER_STATE_OFF_SALE, goods_id, order_id))
+        conn.commit()
+        conn.close()
+        return True
 
 
 def establish_order(customer, goods_id, order_id, address_id):
@@ -302,9 +470,18 @@ def establish_order(customer, goods_id, order_id, address_id):
     :param address_id: 收货地址id
     :return: 如果操作成功，返回True；否则返回False
     """
-    # TODO：请实现该函数的功能。
-    print(customer, goods_id, order_id, address_id)
-    return True
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'update "Order" set state = %s, address_id = %s where id = %s and user_id = %s and goods_id = %s and ' \
+            'state = %s'
+    cursor.execute(query, (ORDER_STATE_ESTABLISHED, address_id, order_id, customer, goods_id, ORDER_STATE_APPROVED))
+    if cursor.rowcount == 0:
+        conn.close()
+        return False
+    else:
+        conn.commit()
+        conn.close()
+        return True
 
 
 def deliver_goods(owner, goods_id, order_id, code, company):
@@ -318,9 +495,18 @@ def deliver_goods(owner, goods_id, order_id, code, company):
     :param company: 快递公司
     :return: 如果操作成功，返回True；否则返回False
     """
-    # TODO：请实现该函数的功能。
-    print(owner, goods_id, order_id, code, company)
-    return True
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'update "Order" set state = %s, express_code = %s, express_company = %s where id = %s and goods_id = %s ' \
+            'and state = %s'
+    cursor.execute(query, (ORDER_STATE_ON_ROAD, code, company, order_id, goods_id, ORDER_STATE_ESTABLISHED))
+    if cursor.rowcount == 0:
+        conn.close()
+        return False
+    else:
+        conn.commit()
+        conn.close()
+        return True
 
 
 def finish_order(customer, goods_id, order_id):
@@ -332,9 +518,17 @@ def finish_order(customer, goods_id, order_id):
     :param order_id: 订单id
     :return: 如果操作成功，返回True；否则返回False
     """
-    # TODO：请实现该函数的功能。
-    print(customer, goods_id, order_id)
-    return True
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'update "Order" set state = %s where id = %s and user_id = %s and goods_id = %s'
+    cursor.execute(query, (ORDER_STATE_FINISHED, order_id, customer, goods_id))
+    if cursor.rowcount == 0:
+        conn.close()
+        return False
+    else:
+        conn.commit()
+        conn.close()
+        return True
 
 
 def get_order_by_user_and_goods(user_id, goods_id):
@@ -347,12 +541,19 @@ def get_order_by_user_and_goods(user_id, goods_id):
         id: 订单id
         state: 订单的状态
     """
-    # TODO：请实现该函数的功能。
-    print(user_id, goods_id)
-    return None if goods_id == 0 else {
-        'id': 0,
-        'state': ORDER_STATE_APPLIED
-    }
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'select id, state from "Order" where user_id = %s and goods_id = %s'
+    cursor.execute(query, (user_id, goods_id))
+    result = cursor.fetchone()
+    conn.close()
+    if result is None:
+        return None
+    else:
+        return {
+            'id': result[0],
+            'state': result[1]
+        }
 
 
 def get_orders_from_user(user_id):
@@ -370,63 +571,26 @@ def get_orders_from_user(user_id):
         express_code: 订单的快递单号，可以为空
         express_company: 订单的快递公司，可以为空
     """
-    # TODO：请实现该函数的功能。
-    print(user_id)
-    return [{
-        'id': 0,
-        'goods_id': 0,
-        'name': '未知商品1',
-        'state': ORDER_STATE_APPLIED,
-        'price': 50,
-        'exempt_postage': True,
-        'express_code': '',
-        'express_company': '',
-    }, {
-        'id': 1,
-        'goods_id': 1,
-        'name': '未知商品2',
-        'state': ORDER_STATE_OFF_SALE,
-        'price': 100,
-        'exempt_postage': False,
-        'express_code': '',
-        'express_company': '',
-    }, {
-        'id': 2,
-        'goods_id': 0,
-        'name': '未知商品3',
-        'state': ORDER_STATE_APPROVED,
-        'price': 150,
-        'exempt_postage': True,
-        'express_code': '',
-        'express_company': '',
-    }, {
-        'id': 3,
-        'goods_id': 1,
-        'name': '未知商品4',
-        'state': ORDER_STATE_ESTABLISHED,
-        'price': 200,
-        'exempt_postage': False,
-        'express_code': '',
-        'express_company': '',
-    }, {
-        'id': 4,
-        'goods_id': 0,
-        'name': '未知商品5',
-        'state': ORDER_STATE_ON_ROAD,
-        'price': 250,
-        'exempt_postage': True,
-        'express_code': '20xx0x0xxx',
-        'express_company': 'TP快递',
-    }, {
-        'id': 5,
-        'goods_id': 1,
-        'name': '未知商品6',
-        'state': ORDER_STATE_FINISHED,
-        'price': 300,
-        'exempt_postage': False,
-        'express_code': '31x50x0xx8',
-        'express_company': 'DB快递',
-    }]
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'select "Order".id, goods_id, name, state, price, exempt_postage, express_code, express_company from ' \
+            '"Order" join "Goods" on "Order".goods_id = "Goods".id where user_id = %s'
+    cursor.execute(query, (user_id,))
+    result = cursor.fetchall()
+    conn.close()
+    if result is None:
+        return None
+    else:
+        return [{
+            'id': result[0],
+            'goods_id': result[1],
+            'name': result[2],
+            'state': result[3],
+            'price': result[4],
+            'exempt_postage': result[5],
+            'express_code': result[6],
+            'express_company': result[7]
+        } for result in result]
 
 
 def get_orders_to_user(user_id):
@@ -447,81 +611,32 @@ def get_orders_to_user(user_id):
         address_phone: 订单关联的收件人手机号
         address_location: 订单关联的收件人地址
     """
-    # TODO：请实现该函数的功能。
-    print(user_id)
-    return [{
-        'id': 0,
-        'user_id': 0,
-        'goods_id': 0,
-        'name': '未知商品1',
-        'state': ORDER_STATE_APPLIED,
-        'price': 50,
-        'exempt_postage': True,
-        'username': '未知用户1',
-        'address_name': '',
-        'address_phone': '',
-        'address_location': '',
-    }, {
-        'id': 1,
-        'user_id': 1,
-        'goods_id': 1,
-        'name': '未知商品2',
-        'state': ORDER_STATE_OFF_SALE,
-        'price': 100,
-        'exempt_postage': False,
-        'username': '未知用户2',
-        'address_name': '',
-        'address_phone': '',
-        'address_location': '',
-    }, {
-        'id': 2,
-        'user_id': 2,
-        'goods_id': 0,
-        'name': '未知商品3',
-        'state': ORDER_STATE_APPROVED,
-        'price': 150,
-        'exempt_postage': True,
-        'username': '未知用户3',
-        'address_name': '',
-        'address_phone': '',
-        'address_location': '',
-    }, {
-        'id': 3,
-        'user_id': 3,
-        'goods_id': 1,
-        'name': '未知商品4',
-        'state': ORDER_STATE_ESTABLISHED,
-        'price': 200,
-        'exempt_postage': False,
-        'username': '未知用户4',
-        'address_name': '未知收件人4',
-        'address_phone': '18810002004',
-        'address_location': '北京市清华大学丁香公寓1号楼304',
-    }, {
-        'id': 4,
-        'user_id': 4,
-        'goods_id': 0,
-        'name': '未知商品5',
-        'state': ORDER_STATE_ON_ROAD,
-        'price': 250,
-        'exempt_postage': True,
-        'username': '未知用户5',
-        'address_name': '未知收件人5',
-        'address_phone': '18810002005',
-        'address_location': '北京市清华大学丁香公寓1号楼305',
-    }, {
-        'id': 5,
-        'user_id': 5,
-        'goods_id': 1,
-        'name': '未知商品6',
-        'state': ORDER_STATE_FINISHED,
-        'price': 300,
-        'exempt_postage': False,
-        'username': '未知用户6',
-        'address_name': '未知收件人6',
-        'address_phone': '18810002006',
-        'address_location': '北京市清华大学丁香公寓1号楼306',
-    }]
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'select "Order".id, "Order".user_id, "Order".goods_id, "Goods".name, "Order".state, "Goods".price, ' \
+            '"Goods".exempt_postage, "User".username, "Address".name, "Address".phone, "Address".location from ' \
+            '"Order" left outer join "Goods" on "Order".goods_id = "Goods".id left outer join "User" on ' \
+            '"Order".user_id = "User".id left outer join "Address" on "Order".address_id = "Address".id where ' \
+            '"Goods".owner= %s;'
+    cursor.execute(query, (user_id,))
+    result = cursor.fetchall()
+    conn.close()
+    if result is None:
+        return None
+    else:
+        return [{
+            'id': result[0],
+            'user_id': result[1],
+            'goods_id': result[2],
+            'name': result[3],
+            'state': result[4],
+            'price': result[5],
+            'exempt_postage': result[6],
+            'username': result[7],
+            'address_name': result[8],
+            'address_phone': result[9],
+            'address_location': result[10]
+        } for result in result]
 
 
 # ======================= 评论接口 (2 + 3 + 2 = 7分) ======================= #
@@ -535,9 +650,18 @@ def create_comment(user_id, goods_id, content):
     :param content: 评论内容
     :return: 如果评论添加成功，返回True，否则返回False
     """
-    # TODO：请实现该函数的功能。
-    print(user_id, goods_id, content)
-    return True
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'insert into "Comment" (user_id, goods_id, content, create_at) values (%s, %s, %s, current_timestamp)'
+    cursor.execute(query, (user_id, goods_id, content))
+    if cursor.rowcount == 1:
+        conn.commit()
+        conn.close()
+        return True
+    else:
+        conn.rollback()
+        conn.close()
+        return False
 
 
 def get_comments(goods_id, order='asc'):
@@ -553,21 +677,23 @@ def get_comments(goods_id, order='asc'):
         content: 评论内容
         create_at: 字符串形式的评论发布时间，请在后台完成时间的格式化
     """
-    # TODO：请实现该函数的功能。
-    print(goods_id, order)
-    return [{
-        'id': 0,
-        'user_id': 0,
-        'username': '未知用户1',
-        'content': '性价比很高，我要我要我要！',
-        'create_at': "2022-04-01 08:34:57"
-    }, {
-        'id': 1,
-        'user_id': 1,
-        'username': '未知用户2',
-        'content': '愚人节发布的评论我不是很相信。',
-        'create_at': "2022-04-01 09:56:09"
-    }]
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'select "Comment".id, user_id, username, content, "Comment".create_at from "Comment" join "User" on ' \
+            '"Comment".user_id = "User".id where goods_id = %s order by create_at ' + order
+    cursor.execute(query, (goods_id,))
+    result = cursor.fetchall()
+    conn.close()
+    if result is None:
+        return None
+    else:
+        return [{
+            'id': result[0],
+            'user_id': result[1],
+            'username': result[2],
+            'content': result[3],
+            'create_at': result[4].strftime('%Y-%m-%d %H:%M:%S')
+        } for result in result]
 
 
 def delete_comment(user_id, goods_id, comment_id):
@@ -579,9 +705,18 @@ def delete_comment(user_id, goods_id, comment_id):
     :param comment_id: 评论id
     :return: 如果删除成功，返回True；否则返回False
     """
-    # TODO：请实现该函数的功能。
-    print(user_id, goods_id, comment_id)
-    return True
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'delete from "Comment" where id = %s and user_id = %s and goods_id = %s'
+    cursor.execute(query, (comment_id, user_id, goods_id))
+    if cursor.rowcount == 1:
+        conn.commit()
+        conn.close()
+        return True
+    else:
+        conn.rollback()
+        conn.close()
+        return False
 
 
 # ======================= 收货地址接口 (2 + 3 + 2 = 7分) ======================= #
@@ -596,9 +731,18 @@ def create_address(user_id, name, phone, location):
     :param location: 收件人地址
     :return: 如果添加成功，返回True；否则返回False
     """
-    # TODO：请实现该函数的功能。
-    print(user_id, name, phone, location)
-    return True
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'insert into "Address" (user_id, name, phone, location) values (%s, %s, %s, %s)'
+    cursor.execute(query, (user_id, name, phone, location))
+    if cursor.rowcount == 1:
+        conn.commit()
+        conn.close()
+        return True
+    else:
+        conn.rollback()
+        conn.close()
+        return False
 
 
 def get_address_list(user_id):
@@ -612,19 +756,21 @@ def get_address_list(user_id):
         phone: 收件人手机号
         location: 收件人地址
     """
-    # TODO：请实现该函数的功能。
-    print(user_id)
-    return [{
-        'id': 0,
-        'name': '未知收件人1',
-        'phone': '18810002001',
-        'location': '北京市清华大学丁香公寓1号楼301',
-    }, {
-        'id': 1,
-        'name': '未知收件人2',
-        'phone': '18810002002',
-        'location': '北京市清华大学丁香公寓1号楼302',
-    }]
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'select id, name, phone, location from "Address" where user_id = %s'
+    cursor.execute(query, (user_id,))
+    result = cursor.fetchall()
+    conn.close()
+    if result is None:
+        return None
+    else:
+        return [{
+            'id': result[0],
+            'name': result[1],
+            'phone': result[2],
+            'location': result[3]
+        } for result in result]
 
 
 def delete_address(user_id, address_id):
@@ -635,6 +781,21 @@ def delete_address(user_id, address_id):
     :param address_id: 收货地址id
     :return: 如果删除成功，返回True；否则返回False
     """
-    # TODO：请实现该函数的功能。
-    print(user_id, address_id)
-    return True
+    conn = get_db_conn()
+    cursor = conn.cursor()
+    query = 'delete from "Address" where id = %s and user_id = %s'
+    try:
+        cursor.execute(query, (address_id, user_id))
+    except Exception as e:
+        print(e)
+        conn.rollback()
+        conn.close()
+        return e
+    if cursor.rowcount == 1:
+        conn.commit()
+        conn.close()
+        return True
+    else:
+        conn.rollback()
+        conn.close()
+        return False

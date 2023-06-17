@@ -293,9 +293,13 @@ def add_address():
 def delete_address():
     address_id = request.args.get('id', '')
     user_id = session.get('user_id')
-    if db_api.delete_address(user_id, address_id):
+    result = db_api.delete_address(user_id, address_id)
+    if result is True:
         return redirect(url_for('manage_address') + '?success=删除地址成功！')
-    return redirect(url_for('manage_address') + '?error=删除地址失败！没有权限。')
+    elif isinstance(result, Exception):
+        return redirect(url_for('manage_address') + '?error=删除地址失败！当前地址有订单。')
+    else:
+        return redirect(url_for('manage_address') + '?error=删除地址失败！没有权限。')
 
 
 if __name__ == '__main__':
